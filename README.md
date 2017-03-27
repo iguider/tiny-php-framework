@@ -142,6 +142,37 @@ public function login($username, $password)
 }
 ```
 
+### JWT
+A token should be generated using `JWT::encode($data, [$options])`.
+
+example:
+```php
+<?php
+// ...
+public function action_login($req, $res) {
+    // ...
+    try {
+        $data = Model::factory("user")->login($user, $password);
+        if ($data) {
+            $res->body([
+                "token" => JWT::encode([
+                    "id" => $data["id"],
+                    "isAdmin" => $data["type"] === "admin"
+                ]),
+                "user" => $data
+            ]);
+            return;
+        }
+        $res->error(401, "Wrong username or password");
+    } catch (Exception $e) {
+        $res->error(500, $e->getMessage());
+    }
+}
+```
+
+The client is supposed to save that token and serve it to `protect()`ed routes in the `authorization` header (`Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6MSwiaXNBZG1pbiI6dHJ1ZSwiaWF0IjoxNDg4NjcwOTcyfQ.mpTETXelkCXNTX18y49DMcGreR5Lap-SsL5KwP0i7EI`).
+
+A proper doc about the JWT class and the options parameter coming soon.
 ## TODO
 - Think of a name (. _ .)
 - GENERATORS!! :D (yeoman?)

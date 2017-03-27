@@ -9,9 +9,9 @@ class JWT
         'RS256' => array('openssl', 'SHA256'),
     );
 
-    public static function decode($jwt, $key, $options = array())
+    public static function decode($jwt, $options = array())
     {
-        if (empty($key)) {
+        if (empty(Config::JWT_KEY)) {
             throw new InvalidArgumentException('Key may not be empty');
         }
         if (!is_array($options)) {
@@ -43,14 +43,14 @@ class JWT
         if (!in_array($header->alg, $options['algorithms'])) {
             throw new UnexpectedValueException('Algorithm not allowed');
         }
-        if (is_array($key) || $key instanceof \ArrayAccess) {
+        if (is_array(Config::JWT_KEY) || Config::JWT_KEY instanceof \ArrayAccess) {
             if (isset($header->kid)) {
-                $key = $key[$header->kid];
+                $key = Config::JWT_KEY[$header->kid];
             } else {
                 throw new UnexpectedValueException('"kid" empty, unable to lookup correct key');
             }
         }
-        if (!static::verify("$headb64.$bodyb64", $signature, $key, $header->alg)) {
+        if (!static::verify("$headb64.$bodyb64", $signature, $header->alg)) {
             die("$headb64.$bodyb64");
             throw new UnexpectedValueException('Signature verification failed');
         }
@@ -84,23 +84,23 @@ class JWT
         return $payload;
     }
 
-    private static function verify($msg, $signature, $key, $alg = 'HS256')
+    private static function verify($msg, $signature, $alg = 'HS256')
     {
         list($function, $algorithm) = static::$supported_algs[$alg];
         switch($function) {
             case 'openssl':
-                $success = openssl_verify($msg, $signature, $key, $algorithm);
+                $success = openssl_verify($msg, $signature, Config::JWT_KEY, $algorithm);
                 if (!$success) {
                     throw new DomainException("OpenSSL unable to verify data: " . openssl_error_string());
                 }
                 return $signature;
             case 'hash_hmac':
             default:
-                return hash_equals($signature, hash_hmac($algorithm, $msg, $key, true));
+                return hash_equals($signature, hash_hmac($algorithm, $msg, Config::JWT_KEY, true));
         }
     }
 
-    public static function encode($payload, $key, $options = array())
+    public static function encode($payload, $options = array())
     {
         $alg = Arr::get($options, 'alg', 'HS256');
         $header = array('typ' => 'JWT', 'alg' => $alg);
@@ -134,12 +134,12 @@ class JWT
         $segments[] = static::base64url_encode(static::json_encode($header));
         $segments[] = static::base64url_encode(static::json_encode($payload));
         $signing_input = implode('.', $segments);
-        $signature = static::sign($signing_input, $key, $alg);
+        $signature = static::sign($signing_input, Config::JWT_KEY, $alg);
         $segments[] = static::base64url_encode($signature);
         return implode('.', $segments);
     }
 
-    private static function sign($msg, $key, $alg = 'HS256')
+    private static function sign($msg, $alg = 'HS256')
     {
         if (empty(static::$supported_algs[$alg])) {
             throw new DomainException('Algorithm not supported');
@@ -147,10 +147,10 @@ class JWT
         list($function, $algorithm) = static::$supported_algs[$alg];
         switch($function) {
             case 'hash_hmac':
-                return hash_hmac($algorithm, $msg, $key, true);
+                return hash_hmac($algorithm, $msg, Config::JWT_KEY, true);
             case 'openssl':
                 $signature = '';
-                $success = openssl_sign($msg, $signature, $key, $algorithm);
+                $success = openssl_sign($msg, $signature, Config::JWT_KEY, $algorithm);
                 if (!$success) {
                     throw new DomainException("OpenSSL unable to sign data");
                 }

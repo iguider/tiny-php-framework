@@ -13,7 +13,7 @@ abstract class Controller
                 list($jwt) = sscanf($authHeader, 'Bearer %s');
                 if ($jwt) {
                     try {
-                        $this->jwt = JWT::decode($jwt, Config::JWT_KEY);
+                        $this->jwt = JWT::decode($jwt);
                     } catch (Exception $e) {
                         return Response::HTTPError(401, $e->getMessage());
                     }
